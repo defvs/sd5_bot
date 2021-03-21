@@ -6,9 +6,10 @@ import Discord from 'discord.js';
 const client = new Discord.Client();
 import ICAL from 'ical.js';
 import dotenv from 'dotenv';
-import {setTimeout} from 'timers';
+import { setTimeout } from 'timers';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc.js';
+import { exit } from 'process';
 dotenv.config();
 dayjs.extend(utc);
 
@@ -121,16 +122,26 @@ async function update() {
             })
             .filter((e) => e.dtend > Date.now())
             .sort((a, b) => a.dtstart - b.dtstart);
-        if (last !== Object.values(allEvent[0])[3]) {
-            getUser(Object.values(allEvent[0])[3], (j) => {
+
+        if (allEvent === {}) {
+            exit(0);
+        }
+
+        if (last !== allEvent[0]['x-teamup-twitch-username']) {
+            getUser(allEvent[0]['x-teamup-twitch-username'], (j) => {
                 const playingEmbed = new Discord.MessageEmbed()
                     .setColor('#00fd66')
                     .setAuthor('Now Playing:')
-                    .setTitle(j.users[0].display_name)
-                    .setURL(`https://twitch.tv/${j.users[0].name}`)
-                    .setDescription('Come on! Join for a bit :)')
-                    .setThumbnail(j.users[0].logo)
-                    .setFooter('Bot developed by pisanvs');
+                    .setTitle(allEvent[0].summary)
+                    .setDescription(`${dayjs.utc(allEvent[0].dtstart).format('hh:mmA')} - ${dayjs.utc(allEvent[0].dtend).format('hh:mmA')} (GMT)`);
+
+                if (j.users[0] != undefined) {
+                    playingEmbed.setURL(`https://twitch.tv/${j.users[0].name}`)
+                        .setThumbnail(j.users[0].logo);
+                }
+                if (allEvent[1] != undefined) {
+                    playingEmbed.setFooter(`Next up: ${allEvent[1].summary}`)
+                }
                 client.channels.cache
                     .find((e) => e.name == 'now-playing')
                     .send(playingEmbed);
@@ -141,5 +152,6 @@ async function update() {
 }
 
 setInterval(() => update(), 1 * 1000 * 60);
+update();
 
 client.login(process.env.TOKEN);
